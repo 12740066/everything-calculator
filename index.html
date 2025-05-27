@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Golf Bet Calculator</title>
+  <!-- Link to External CSS -->
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <!-- Top Bar -->
+<div id="topBar" style="display: flex; justify-content: space-between; align-items: center;">
+  <!-- Game Rules Button -->
+  <a href="game-rules.html" class="rule-book-btn btn">Game Rules</a>
+  <div>
+    <button class="btn" onclick="saveGame()">Save Game</button>
+    <button class="btn" onclick="loadGame()">Load Game</button>
+    <button class="btn btn-gray" onclick="clearSavedGame()">Clear Saved Game</button>
+  </div>
+  <!-- Language Selector -->
+<div id="languageSelector" style="margin: 10px;">
+  <button id="btnEN" class="btn btn-green" onclick="switchLanguage('EN')">EN</button>
+  <button id="btnVN" class="btn btn-gray" onclick="switchLanguage('VN')">VN</button>
+</div>
+</div>
+
+  <!-- Setup Section -->
+  <div id="setup">
+  <h2>Golf Bet Calculator</h2>
+  <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+    <!-- Players Selection -->
+    <label># Players:
+      <div class="number-input">
+        <button onclick="decrementPlayers()">−</button>
+        <input type="text" id="numPlayers" value="4" readonly />
+        <button onclick="incrementPlayers()">+</button>
+      </div>
+    </label>
+
+    <!-- Skin Value Selection -->
+    <label>Skin Value ($):
+      <div class="number-input">
+        <button onclick="decrementSkinValue()">−</button>
+        <input type="text" id="skinValue" value="1" readonly />
+        <button onclick="incrementSkinValue()">+</button>
+      </div>
+    </label>
+
+    <!-- Eagle and Albatross Rate Inputs -->
+<div style="margin-top: 10px; display: flex; gap: 20px; align-items: center;">
+  <label>Eagle Rate:
+    <input type="number" id="eagleRate" value="16" style="width: 60px; text-align: center;" />
+  </label>
+  <label>Albatross Rate:
+    <input type="number" id="albatrossRate" value="25" style="width: 60px; text-align: center;" />
+  </label>
+  <label>Hole-in-One Rate:
+    <input type="number" id="holeInOneRate" value="25" style="width: 60px; text-align: center;" />
+  </label>
+</div>
+
+    <!-- Golf Course Selection -->
+    <label>Golf Course:
+      <select id="golfCourseSelect" onchange="loadGolfCourse()" style="width: 300px; font-size: 14px;">
+        <option value="" disabled selected>Select a Golf Course</option>
+      </select>
+    </label>
+  </div>
+  <div style="margin-top: 20px;">
+    <button class="btn" onclick="showNewCourseForm()">Add New Course</button>
+    <button class="btn" onclick="startGame()">Start Game</button>
+  </div>
+</div>
+
+  <!-- Player Setup Section -->
+  <div id="playerSetup" class="hidden">
+    <h2>Enter Player Information</h2>
+    <div id="playerInputs"></div>
+  </div>
+
+  <!-- Game Section -->
+<div id="holeTracker" class="hidden">
+  <h2 id="holeTitle">Hole #0</h2>
+  <p id="holeDetails"></p>
+  <div id="holeInputs"></div> <!-- Player and hole-related inputs -->
+  <div id="navigationButtons"></div> <!-- Navigation buttons container -->
+</div>
+
+  <!-- Earnings Summary Section -->
+  <div id="earningsSummary" class="hidden">
+    <div id="earnings"></div>
+	
+	  <!-- Hole-by-Hole Summary -->
+  <div id="holeSummary"></div>
+
+  </div>
+
+  <!-- Game Rules Modal -->
+  <div id="gameRulesModal" class="modal">
+    <div class="modal-content">
+      <span class="modal-close" onclick="closeGameRules()">&times;</span>
+      <h2>Game Rules</h2>
+      <p>Here are the rules for the Golf Bet Calculator...</p>
+    </div>
+  </div>
+
+  <!-- New Course Modal -->
+  <div id="newCourseModal" class="modal">
+    <div class="modal-content">
+      <span class="modal-close" onclick="closeNewCourseForm()">&times;</span>
+      <h2>Add New Golf Course</h2>
+      <label>Course Name: <input type="text" id="newCourseName" /></label>
+      <label># Holes: <input type="number" id="newCourseHoles" min="1" max="18" value="18" /></label>
+      <div id="newCourseHolesDetails"></div>
+      <button class="btn" onclick="createNewCourse()">Save Course</button>
+    </div>
+  </div>
+
+  <!-- External JavaScript -->
+  <script src="js/hole-calculations.js"></script>
+  
+</body>
+</html>
