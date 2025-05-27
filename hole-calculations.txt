@@ -1,0 +1,2175 @@
+//hole-calculations.js file
+
+// Global variables
+let players = [];
+let history = [];
+let currentHole = 0;
+const totalHoles = 18;
+let skinValue = 1;
+let eagleWinningRate = 16;
+let albatrossWinningRate = 25;
+let holeInOneRateInput = 25;
+let courses = [];
+let selectedCourse = null;
+let lastRenderedHole = null; // Tracks the last rendered hole
+
+
+// Language Translations
+const translations = {
+  EN: {
+    gameTitle: "Golf Bet Calculator",
+    numPlayers: "# Players",
+    skinValue: "Skin Value ($):",
+    eagleRate: "Eagle Rate:",
+    albatrossRate: "Albatross Rate:",
+    golfCourse: "Golf Course:",
+    addNewCourse: "Add New Course",
+    startGame: "Start Game",
+    enterPlayerInfo: "Enter Player Information",
+    holeTitle: "Hole",
+    holeDetails: "Hole Details",
+    earningsSummary: "Earnings Summary",
+    resetGame: "Reset Game",
+    nextHole: "Next Hole",
+    prevHole: "Previous Hole",
+    gameRules: "Game Rules",
+    saveGame: "Save Game",
+    loadGame: "Load Game",
+    clearSavedGame: "Clear Saved Game",
+  },
+  VN: {
+    gameTitle: "Máy tính cá cược Golf",
+    numPlayers: "Số người chơi:",
+    skinValue: "Giá trị Skin ($):",
+    eagleRate: "Tỉ lệ Eagle:",
+    albatrossRate: "Tỉ lệ Albatross:",
+    golfCourse: "Sân Golf:",
+    addNewCourse: "Thêm sân mới",
+    startGame: "Bắt đầu trò chơi",
+    enterPlayerInfo: "Nhập thông tin người chơi",
+    holeTitle: "Lỗ",
+    holeDetails: "Chi tiết lỗ",
+    earningsSummary: "Tổng kết thu nhập",
+    resetGame: "Đặt lại trò chơi",
+    nextHole: "Lỗ tiếp theo",
+    prevHole: "Lỗ trước",
+    gameRules: "Luật chơi",
+    saveGame: "Lưu trò chơi",
+    loadGame: "Tải trò chơi",
+    clearSavedGame: "Xóa trò chơi đã lưu",
+  },
+};
+
+// Track the current language
+let currentLanguage = "EN"; // Default language
+
+function switchLanguage(language) {
+  // Update the current language
+  currentLanguage = language;
+
+  // Get the buttons
+  const btnEN = document.getElementById("btnEN");
+  const btnVN = document.getElementById("btnVN");
+
+  // Toggle button styles
+  if (language === "EN") {
+    btnEN.classList.add("btn-green");
+    btnEN.classList.remove("btn-gray");
+    btnVN.classList.add("btn-gray");
+    btnVN.classList.remove("btn-green");
+  } else if (language === "VN") {
+    btnVN.classList.add("btn-green");
+    btnVN.classList.remove("btn-gray");
+    btnEN.classList.add("btn-gray");
+    btnEN.classList.remove("btn-green");
+  }
+
+  // Apply translations to the UI
+  applyTranslations();
+}
+
+function applyTranslations() {
+  const t = translations[currentLanguage];
+
+  // Update static text in the application
+  document.title = t.gameTitle; // Update the page title
+
+  const mainTitle = document.querySelector("h2");
+  if (mainTitle) {
+    mainTitle.textContent = t.gameTitle;
+  }
+
+  const numPlayersLabel = document.querySelector("label[for='numPlayers']");
+  if (numPlayersLabel) {
+    numPlayersLabel.textContent = t.numPlayers;
+  }
+
+  const skinValueLabel = document.querySelector("label[for='skinValue']");
+  if (skinValueLabel) {
+    skinValueLabel.textContent = t.skinValue;
+  }
+
+  const eagleRateLabel = document.querySelector("label[for='eagleRate']");
+  if (eagleRateLabel) {
+    eagleRateLabel.textContent = t.eagleRate;
+  }
+
+  const albatrossRateLabel = document.querySelector("label[for='albatrossRate']");
+  if (albatrossRateLabel) {
+    albatrossRateLabel.textContent = t.albatrossRate;
+  }
+
+  const golfCourseLabel = document.querySelector("label[for='golfCourseSelect']");
+  if (golfCourseLabel) {
+    golfCourseLabel.textContent = t.golfCourse;
+  }
+
+  const gameRulesButton = document.querySelector(".rule-book-btn");
+  if (gameRulesButton) {
+    gameRulesButton.textContent = t.gameRules;
+  }
+
+  const addNewCourseButton = document.querySelector("button[onclick='showNewCourseForm()']");
+  if (addNewCourseButton) {
+    addNewCourseButton.textContent = t.addNewCourse;
+  }
+
+  const startGameButton = document.querySelector("button[onclick='startGame()']");
+  if (startGameButton) {
+    startGameButton.textContent = t.startGame;
+  }
+
+  // Update dynamically rendered content
+  renderNavigationButtons(); // Ensure navigation buttons are updated
+}
+
+// Example function
+function resetGame() {
+  players = [];
+  history = [];
+  currentHole = 0;
+  selectedCourse = null;
+  document.getElementById('setup').classList.remove('hidden');
+  document.getElementById('playerSetup').classList.add('hidden');
+  document.getElementById('holeTracker').classList.add('hidden');
+  document.getElementById('earningsSummary').classList.add('hidden');
+  document.getElementById('playerInputs').innerHTML = '';
+  document.getElementById('holeInputs').innerHTML = '';
+  document.getElementById('earnings').innerHTML = '';
+  document.getElementById('navigationButtons').innerHTML = ''; // Clear navigation buttons
+}
+
+// Displays the game rules modal
+function showGameRules() {
+  document.getElementById('gameRulesModal').style.display = 'block';
+}
+
+// Closes the game rules modal
+function closeGameRules() {
+  document.getElementById('gameRulesModal').style.display = 'none';
+}
+
+// Displays the player setup screen
+function showPlayerSetup() {
+  const numPlayers = parseInt(document.getElementById('numPlayers').value);
+  skinValue = parseFloat(document.getElementById('skinValue').value);
+
+  if (isNaN(numPlayers) || numPlayers < 2 || numPlayers > 6) {
+    alert("Please enter a valid number of players (2-6).");
+    return;
+  }
+
+  players = [];
+  history = [];
+  currentHole = 0; // Reset to start with Hole 0
+
+  // Show the "Enter Player Information" section
+  document.getElementById('playerSetup').classList.remove('hidden');
+
+  let html = `<table><thead><tr><th>Name</th><th>Gender</th><th>Handicap</th></tr></thead><tbody>`;
+  for (let i = 0; i < numPlayers; i++) {
+    html += `<tr>
+      <td><input type="text" id="name${i}" value="Player ${i + 1}" /></td>
+      <td>
+        <div class="gender-toggle">
+          <button id="gender${i}" class="btn gender-btn male" onclick="toggleGender(${i})">Male</button>
+        </div>
+      </td>
+      <td><input type="number" id="hcp${i}" value="0" min="0" max="36" /></td>
+    </tr>`;
+  }
+  html += `</tbody></table>
+    <button class="btn" onclick="confirmPlayers()">Confirm Players</button>`;
+  document.getElementById('playerInputs').innerHTML = html;
+}
+
+// Confirms player data and sets up initial Hole-in-One Rate (same setup section as other rates)
+function confirmPlayers() {
+  players = [];
+  const numPlayers = document.querySelectorAll('[id^=name]').length;
+
+  // Safely handle Eagle, Albatross, and Hole-in-One rate inputs
+  const eagleRateInput = document.getElementById('eagleRate');
+  const albatrossRateInput = document.getElementById('albatrossRate');
+  const holeInOneRateInput = document.getElementById('holeInOneRate'); // Hole-in-One rate input
+
+  eagleWinningRate = eagleRateInput ? parseInt(eagleRateInput.value) || 16 : 16;
+  albatrossWinningRate = albatrossRateInput ? parseInt(albatrossRateInput.value) || 25 : 25;
+  holeInOneRate = holeInOneRateInput ? parseInt(holeInOneRateInput.value) || 25 : 25; // Default to 25
+
+  for (let i = 0; i < numPlayers; i++) {
+    const genderButton = document.getElementById(`gender${i}`);
+    const gender = genderButton.classList.contains('male') ? 'Male' : 'Female';
+
+    players.push({
+      name: document.getElementById(`name${i}`).value.trim() || `Player ${i + 1}`,
+      gender: gender,
+      hcp: parseInt(document.getElementById(`hcp${i}`).value) || 0,
+    });
+  }
+
+  // Calculate Handicap Compensation for Hole 0
+  const comp = [];
+  for (let i = 0; i < numPlayers; i++) {
+    let sum = 0;
+    for (let j = 0; j < numPlayers; j++) {
+      if (i !== j) {
+        const diff = (players[i].hcp - players[j].hcp) * skinValue;
+        sum += Math.floor(diff);
+      }
+    }
+    comp[i] = sum;
+  }
+
+  players.forEach((p, i) => {
+    p.handicapComp = comp[i];
+    p.earnings = comp[i];
+  });
+
+  // Save all fields for Hole 0 to the history
+  history[0] = {
+    strokes: new Array(numPlayers).fill(0),
+    bonus: new Array(numPlayers).fill(0),
+    penalty: new Array(numPlayers).fill(0),
+    holeWinEarnings: new Array(numPlayers).fill(0),
+    strokeDiffEarnings: new Array(numPlayers).fill(0),
+    bonusEarnings: new Array(numPlayers).fill(0),
+    penaltyDeductions: new Array(numPlayers).fill(0),
+    totalHoleEarnings: [...comp],
+    holeEarnings: [...comp],
+  };
+
+  console.log(`Saved data for Hole 0:`, history[0]);
+
+  // Update UI
+  document.getElementById('setup').classList.add('hidden');
+  document.getElementById('playerSetup').classList.add('hidden');
+  document.getElementById('holeTracker').classList.remove('hidden');
+  document.getElementById('earningsSummary').classList.remove('hidden');
+
+  // Render Hole 0
+  lastRenderedHole = null; // Reset to force rendering
+  renderHoleInputs();
+  renderEarnings();
+
+  // Auto-save the game
+  autoSaveGame();
+}
+
+function renderHoleInputs() {
+  console.log("Called renderHoleInputs for Hole:", currentHole);
+
+  if (lastRenderedHole === currentHole) {
+    console.log("Skipping redundant render for Hole:", currentHole);
+    return;
+  }
+  lastRenderedHole = currentHole;
+
+  console.log("Rendering Hole Inputs for Hole:", currentHole);
+
+  const isHoleZero = currentHole === 0; // Special case for Hole 0
+  const { menPar, menIndex, womenPar, womenIndex } = loadHoleDetails();
+
+  const holeInputsDiv = document.getElementById('holeInputs');
+  holeInputsDiv.innerHTML = ''; // Clear previous content
+
+  // Display gender-specific Par and Index information for the hole
+  document.getElementById('holeDetails').innerHTML = `
+    <p>
+      <strong>Men Par:</strong> ${menPar} |
+      <strong>Men Index:</strong> ${menIndex} |
+      <strong>Women Par:</strong> ${womenPar} |
+      <strong>Women Index:</strong> ${womenIndex}
+    </p>`;
+
+  // Special message for Hole 0
+  if (isHoleZero) {
+    holeInputsDiv.innerHTML = `
+      <p><strong>Handicap Compensation:</strong> This is the starting earnings based on player handicaps. No strokes, bonuses, or penalties are applied for this hole.</p>`;
+  } else {
+    // Render inputs for other holes
+    const hasWomenPlayers = players.some(player => player.gender === "Female");
+    const isLongDriveVisible = (menPar === 5 && womenPar === 5) ||
+      (menPar !== 5 && womenPar === 5 && hasWomenPlayers);
+    const isNtpVisible = menPar === 3 && womenPar === 3; // NTP only for Par 3 holes
+
+    let html = `<table><thead><tr>
+      <th>Player</th>
+      <th>HDC</th>
+      <th>Stroke</th>
+      <th>Bonus</th>
+      <th>Penalty</th>`;
+
+    // Add Long Drive column header if visible
+    if (isLongDriveVisible) {
+      html += `<th>Long Drive (m)</th>`;
+    }
+
+    // Add NTP column header if visible
+    if (isNtpVisible) {
+      html += `<th>NTP (cm)</th>`;
+    }
+
+    html += `</tr></thead><tbody>`;
+
+    players.forEach((player, i) => {
+      const defaultStrokes = player.gender === "Male" ? menPar : womenPar;
+      const strokes = history[currentHole]?.strokes?.[i] ?? defaultStrokes;
+      const bonus = history[currentHole]?.bonus?.[i] ?? 0;
+      const penalty = history[currentHole]?.penalty?.[i] ?? 0;
+      const longDrive = history[currentHole]?.longDrive?.[i] ?? 0;
+      const fairway = history[currentHole]?.fairway?.[i] ?? false;
+      const ntp = history[currentHole]?.ntp?.[i] ?? 0;
+      const ntpChecked = history[currentHole]?.ntpCheckbox?.[i] ?? false;
+
+      html += `<tr>
+        <td>${player.name} (${player.gender || "N/A"})</td>
+        <td>${player.hcp}</td>
+        <td>
+          <div class="number-input">
+            <button onclick="decrementValue('stroke${i}')">−</button>
+            <input id="stroke${i}" type="number" value="${strokes}" maxlength="2" />
+            <button onclick="incrementValue('stroke${i}')">+</button>
+          </div>
+        </td>
+        <td>
+          <div class="number-input">
+            <button onclick="decrementValue('bonus${i}')">−</button>
+            <input id="bonus${i}" type="number" value="${bonus}" maxlength="2" />
+            <button onclick="incrementValue('bonus${i}')">+</button>
+          </div>
+        </td>
+        <td>
+          <div class="number-input">
+            <button onclick="decrementValue('penalty${i}')">−</button>
+            <input id="penalty${i}" type="number" value="${penalty}" maxlength="2" />
+            <button onclick="incrementValue('penalty${i}')">+</button>
+          </div>
+        </td>`;
+
+      // Add Long Drive column content if visible
+      if (isLongDriveVisible) {
+        html += `<td>
+          <div style="display: flex; align-items: center; gap: 5px;">
+            <input id="longDrive${i}" 
+                   type="number" 
+                   value="${longDrive}" 
+                   maxlength="4" 
+                   placeholder="0000" 
+                   ${!fairway ? "disabled" : ""} 
+                   oninput="updateLongDrive(${i}, this.value);" />
+            <input id="fairwayCheckbox${i}" type="checkbox" ${fairway ? "checked" : ""} onchange="toggleFairway(${i}, this.checked);">
+            <label for="fairwayCheckbox${i}">Fairway</label>
+          </div>
+        </td>`;
+      }
+
+      // Add NTP column content if visible
+      if (isNtpVisible) {
+        html += `<td>
+          <div style="display: flex; align-items: center; gap: 5px;">
+            <input id="ntpDistance${i}" 
+                   type="number" 
+                   value="${ntp}" 
+                   maxlength="4" 
+                   placeholder="0000" 
+                   ${!ntpChecked ? "disabled" : ""} 
+                   oninput="updateNtpDistance(${i}, this.value);" />
+            <input id="ntpCheckbox${i}" type="checkbox" ${ntpChecked ? "checked" : ""} onchange="toggleNtp(${i}, this.checked);">
+            <label for="ntpCheckbox${i}">Green</label>
+          </div>
+        </td>`;
+      }
+
+      html += `</tr>`;
+    });
+
+    html += `</tbody></table>`;
+    holeInputsDiv.innerHTML = html;
+  }
+
+  document.getElementById('holeTitle').innerText = isHoleZero
+    ? `Handicap Compensation (Hole 0)`
+    : `Hole #${currentHole} - ${selectedCourse?.name || "Selected Golf Club"}`;
+
+  renderNavigationButtons();
+}
+
+function loadHoleDetails() {
+  if (currentHole === 0) {
+    return {
+      menPar: "N/A",
+      menIndex: "N/A",
+      womenPar: "N/A",
+      womenIndex: "N/A"
+    };
+  }
+
+  if (!selectedCourse || !selectedCourse.holes || currentHole < 1 || currentHole > selectedCourse.holes.length) {
+    return {
+      menPar: "N/A",
+      menIndex: "N/A",
+      womenPar: "N/A",
+      womenIndex: "N/A"
+    };
+  }
+
+  const holeData = selectedCourse.holes[currentHole - 1];
+  return {
+    menPar: holeData.mPar || "N/A",
+    menIndex: holeData.mIndex || "N/A",
+    womenPar: holeData.fPar || "N/A",
+    womenIndex: holeData.fIndex || "N/A"
+  };
+}
+
+function renderPlayerRow(player, i, isHoleZero, menPar, womenPar) {
+  // Use the gender-specific par value as the default stroke value
+  const strokes = isHoleZero
+    ? player.handicapComp || 0 // Display handicap compensation for Hole 0
+    : history[currentHole]?.strokes?.[i] ?? (player.gender === "Male" ? menPar : womenPar);
+
+  const bonus = isHoleZero
+    ? 0 // No bonuses for Hole 0
+    : history[currentHole]?.bonus?.[i] ?? 0;
+
+  const penalty = isHoleZero
+    ? 0 // No penalties for Hole 0
+    : history[currentHole]?.penalty?.[i] ?? 0;
+
+  console.log(`Rendering row for Player ${i + 1}: Strokes = ${strokes}, Bonus = ${bonus}, Penalty = ${penalty}`);
+
+  const longDrive = history[currentHole]?.longDrive || new Array(players.length).fill(0);
+  const fairway = history[currentHole]?.fairway || new Array(players.length).fill(false);
+
+  let html = `<tr>
+      <td>${player.name} (${player.gender || "N/A"})</td>
+      <td>${player.hcp}</td>
+      <td>
+        <div class="number-input">
+          <button ${isHoleZero ? "disabled" : ""} onclick="decrementValue('stroke${i}')">−</button>
+          <input id="stroke${i}" type="number" value="${strokes}" ${isHoleZero ? "readonly" : ""} />
+          <button ${isHoleZero ? "disabled" : ""} onclick="incrementValue('stroke${i}')">+</button>
+        </div>
+      </td>
+      <td>
+        <div class="number-input">
+          <button ${isHoleZero ? "disabled" : ""} onclick="decrementValue('bonus${i}')">−</button>
+          <input id="bonus${i}" type="number" value="${bonus}" ${isHoleZero ? "readonly" : ""} />
+          <button ${isHoleZero ? "disabled" : ""} onclick="incrementValue('bonus${i}')">+</button>
+        </div>
+      </td>
+      <td>
+        <div class="number-input">
+          <button ${isHoleZero ? "disabled" : ""} onclick="decrementValue('penalty${i}')">−</button>
+          <input id="penalty${i}" type="number" value="${penalty}" ${isHoleZero ? "readonly" : ""} />
+          <button ${isHoleZero ? "disabled" : ""} onclick="incrementValue('penalty${i}')">+</button>
+        </div>
+      </td>`;
+
+  if (menPar === 5 && womenPar === 5) {
+    html += `
+      <td>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <input id="longDrive${i}" type="number" value="${longDrive[i] || 0}" placeholder="Distance (m)" 
+            oninput="updateLongDrive(${i}, this.value);" 
+            ${!fairway[i] || isHoleZero ? "disabled" : ""} />
+          <label>
+            <input id="fairwayCheckbox${i}" type="checkbox" ${fairway[i] ? "checked" : ""} 
+              onchange="toggleFairway(${i}, this.checked);" ${isHoleZero ? "disabled" : ""} />
+            Fairway
+          </label>
+        </div>
+      </td>`;
+  } else {
+    html += `<td>N/A</td>`;
+  }
+
+  html += `</tr>`;
+  return html;
+}
+
+function renderStrokeInput(i, strokes) {
+  return `
+    <td>
+      <div class="number-input">
+        <button onclick="decrementValue('stroke${i}')">−</button>
+        <input id="stroke${i}" type="number" value="${strokes}" min="1" />
+        <button onclick="incrementValue('stroke${i}')">+</button>
+      </div>
+    </td>`;
+}
+
+function renderBonusInput(i, bonus) {
+  return `
+    <td>
+      <div class="number-input">
+        <button onclick="decrementValue('bonus${i}')">−</button>
+        <input id="bonus${i}" type="number" value="${bonus}" />
+        <button onclick="incrementValue('bonus${i}')">+</button>
+      </div>
+    </td>`;
+}
+
+function renderPenaltyInput(i, penalty) {
+  return `
+    <td>
+      <div class="number-input">
+        <button onclick="decrementValue('penalty${i}')">−</button>
+        <input id="penalty${i}" type="number" value="${penalty}" />
+        <button onclick="incrementValue('penalty${i}')">+</button>
+      </div>
+    </td>`;
+}
+
+function renderNtpInput(i, ntp) {
+  return `
+    <td>
+      <input id="ntp${i}" type="number" value="${ntp || ""}" placeholder="cm" />
+    </td>`;
+}
+
+function renderLongDriveInput(i, longDrive, isFairway) {
+  return `
+    <td>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <input id="longDrive${i}" type="number" value="${longDrive}" placeholder="m" />
+        <button id="fairwayBtn${i}" class="btn ${isFairway ? 'btn-green' : 'btn-gray'}" onclick="toggleFairway(${i})">
+          ${isFairway ? 'Fairway' : 'Off Fairway'}
+        </button>
+      </div>
+    </td>`;
+}
+
+function renderNavigationButtons() {
+  const t = translations[currentLanguage]; // Get the current language translations
+  const navigationContainer = document.getElementById('navigationButtons');
+
+  // Clear existing buttons to prevent duplication
+  navigationContainer.innerHTML = '';
+
+  // Render the navigation buttons
+  navigationContainer.innerHTML = `
+    <div style="margin-top: 20px;">
+      <button class="btn btn-gray" onclick="prevHole()" ${currentHole === 0 ? 'disabled' : ''}>${t.prevHole}</button>
+      <button class="btn" onclick="nextHole()" ${currentHole === totalHoles ? 'disabled' : ''}>${t.nextHole}</button>
+      <button class="btn btn-red reset-btn">${t.resetGame}</button>
+    </div>`;
+
+  // Attach the event listener to the reset button
+  const resetButton = document.querySelector('.reset-btn');
+  if (resetButton) {
+    resetButton.addEventListener('click', resetGame);
+  }
+}
+
+// Increments a numeric input value
+function incrementValue(id) {
+  const input = document.getElementById(id);
+  input.value = parseInt(input.value) + 1 || 1;
+  updateHole();
+}
+
+// Decrements a numeric input value
+function decrementValue(id) {
+  const input = document.getElementById(id);
+  let value = parseInt(input.value) || 1; // Default to 1 if the input is invalid
+  if (value > 1) {
+    input.value = value - 1; // Decrease the value only if it's greater than 1
+  } else {
+    input.value = 1; // Ensure the value stays at 1
+  }
+  updateHole(); // Recalculate and update the hole
+}
+
+function updateHole() {
+  const holeData = initializeHoleData(); // Ensure holeData is always initialized.
+
+  // Reset all earnings arrays to zero before recalculating
+  holeData.holeWinEarnings = new Array(players.length).fill(0);
+  holeData.strokeDiffEarnings = new Array(players.length).fill(0);
+  holeData.bonusEarnings = new Array(players.length).fill(0);
+  holeData.penaltyDeductions = new Array(players.length).fill(0);
+  holeData.starEarnings = new Array(players.length).fill(0);
+
+  // Step 1: Calculate strokes for each player
+  calculateStrokes(holeData);
+
+  // Step 2: Calculate hole win earnings
+  calculateHoleWinEarnings(holeData);
+
+  // Step 3: Calculate stroke differential earnings
+  calculateStrokeDifferentialEarnings(holeData);
+
+  // Step 4: Calculate bonus and penalty earnings
+  calculateBonusAndPenaltyEarnings(holeData);
+
+  // Step 5: Calculate star earnings (Birdie, Eagle, Albatross)
+  calculateStarEarnings(holeData);
+
+  // Step 6: Calculate long drive earnings
+  calculateLongDriveEarnings(holeData);
+
+  // Step 7: Calculate NTP earnings
+  calculateNtpEarnings(holeData);
+
+  // Step 8: Save hole data to history
+  saveHoleData(holeData);
+
+  // Step 9: Render updates to the UI
+  renderHoleUpdates();
+}
+
+// Step 1: Initialize or retrieve hole data
+function initializeHoleData() {
+  if (!history[currentHole]) {
+    history[currentHole] = {}; // Initialize data for the current hole
+  }
+
+  const holeData = history[currentHole];
+
+  // Special handling for Hole 0
+  if (currentHole === 0) {
+    holeData.strokes = new Array(players.length).fill(0);
+    holeData.bonus = new Array(players.length).fill(0);
+    holeData.penalty = new Array(players.length).fill(0);
+    holeData.holeWinEarnings = new Array(players.length).fill(0);
+    holeData.strokeDiffEarnings = new Array(players.length).fill(0);
+    holeData.bonusEarnings = new Array(players.length).fill(0);
+    holeData.penaltyDeductions = new Array(players.length).fill(0);
+    holeData.starEarnings = new Array(players.length).fill(0);
+    holeData.fairway = new Array(players.length).fill(false);
+    holeData.longDrive = new Array(players.length).fill(0);
+    holeData.ntp = new Array(players.length).fill(0);
+    holeData.ntpCheckbox = new Array(players.length).fill(false);
+    holeData.ntpEarnings = new Array(players.length).fill(0); // Initialize ntpEarnings
+    holeData.holeEarnings = players.map(player => player.handicapComp || 0);
+    holeData.totalHoleEarnings = players.map(player => player.handicapComp || 0);
+    console.log(`Initialized data for Hole 0:`, holeData);
+    return holeData;
+  }
+
+  // Initialize other fields for normal holes
+  holeData.strokes = holeData.strokes || new Array(players.length).fill(0);
+  holeData.holeWinEarnings = holeData.holeWinEarnings || new Array(players.length).fill(0);
+  holeData.strokeDiffEarnings = holeData.strokeDiffEarnings || new Array(players.length).fill(0);
+  holeData.bonusEarnings = holeData.bonusEarnings || new Array(players.length).fill(0);
+  holeData.penaltyDeductions = holeData.penaltyDeductions || new Array(players.length).fill(0);
+  holeData.starEarnings = holeData.starEarnings || new Array(players.length).fill(0);
+  holeData.fairway = holeData.fairway || new Array(players.length).fill(false);
+  holeData.longDrive = holeData.longDrive || new Array(players.length).fill(0);
+  holeData.ntp = holeData.ntp || new Array(players.length).fill(0); // Ensure NTP distances are initialized
+  holeData.ntpCheckbox = holeData.ntpCheckbox || new Array(players.length).fill(false); // Ensure NTP checkboxes are initialized
+  holeData.ntpEarnings = holeData.ntpEarnings || new Array(players.length).fill(0); // Ensure ntpEarnings is initialized
+
+  console.log(`Initialized data for Hole ${currentHole}:`, holeData);
+  return holeData;
+}
+
+// Step 2: Calculate strokes for each player
+function calculateStrokes(holeData) {
+  players.forEach((player, i) => {
+    const strokeInput = document.getElementById(`stroke${i}`);
+    const par = player.gender === "Male" ? selectedCourse.holes[currentHole - 1]?.mPar : selectedCourse.holes[currentHole - 1]?.fPar;
+    holeData.strokes[i] = strokeInput ? parseInt(strokeInput.value) || par : par;
+  });
+}
+
+// Step 3: Calculate hole win earnings using pairwise comparisons
+function calculateHoleWinEarnings(holeData) {
+  players.forEach((playerA, i) => {
+    for (let j = i + 1; j < players.length; j++) {
+      const playerB = players[j];
+
+      // Get gender-specific par for both players
+      const parA = playerA.gender === "Male"
+        ? selectedCourse.holes[currentHole - 1]?.mPar
+        : selectedCourse.holes[currentHole - 1]?.fPar;
+      const parB = playerB.gender === "Male"
+        ? selectedCourse.holes[currentHole - 1]?.mPar
+        : selectedCourse.holes[currentHole - 1]?.fPar;
+
+      // Adjust strokes relative to gender-specific par
+      const adjustedStrokesA = holeData.strokes[i] - parA;
+      const adjustedStrokesB = holeData.strokes[j] - parB;
+
+      // Calculate handicap differences
+      const handicapDifference = calculateHandicapDifference(playerA, playerB);
+
+      // Apply handicap adjustments
+      const playerAAdjusted = adjustedStrokesA - handicapDifference.playerA;
+      const playerBAdjusted = adjustedStrokesB - handicapDifference.playerB;
+
+      // Update hole win earnings based on adjusted strokes
+      updateHoleWinEarnings(holeData, i, j, playerAAdjusted, playerBAdjusted);
+    }
+  });
+}
+
+function calculateHandicapDifference(playerA, playerB) {
+  const handicapDifference = Math.floor((playerA.hcp - playerB.hcp) * 0.7);
+  const holeIndex = selectedCourse.holes[currentHole - 1]?.mIndex || 1;
+
+  return {
+    playerA: handicapDifference > 0 && handicapDifference >= holeIndex ? 1 : 0,
+    playerB: handicapDifference < 0 && Math.abs(handicapDifference) >= holeIndex ? 1 : 0,
+  };
+}
+
+function updateHoleWinEarnings(holeData, i, j, playerAAdjusted, playerBAdjusted) {
+  if (playerAAdjusted < playerBAdjusted) {
+    holeData.holeWinEarnings[i] += skinValue;
+    holeData.holeWinEarnings[j] -= skinValue;
+  } else if (playerAAdjusted > playerBAdjusted) {
+    holeData.holeWinEarnings[i] -= skinValue;
+    holeData.holeWinEarnings[j] += skinValue;
+  }
+}
+
+// Step 4: Calculate stroke differential earnings
+function calculateStrokeDifferentialEarnings(holeData) {
+  const strokeDifferentials = players.map((player, i) => holeData.strokes[i] - (player.gender === "Male" ? selectedCourse.holes[currentHole - 1]?.mPar : selectedCourse.holes[currentHole - 1]?.fPar));
+  players.forEach((_, i) => {
+    let diffSum = 0;
+    players.forEach((_, j) => {
+      if (i !== j) {
+        diffSum += (strokeDifferentials[i] - strokeDifferentials[j]);
+      }
+    });
+    holeData.strokeDiffEarnings[i] = -1 * skinValue * diffSum;
+  });
+}
+
+// Step 5: Calculate bonus and penalty earnings
+function calculateBonusAndPenaltyEarnings(holeData) {
+  players.forEach((_, i) => {
+    const bonusInput = document.getElementById(`bonus${i}`);
+    const penaltyInput = document.getElementById(`penalty${i}`);
+    const rawBonus = bonusInput ? parseInt(bonusInput.value) || 0 : 0;
+    const rawPenalty = penaltyInput ? parseInt(penaltyInput.value) || 0 : 0;
+
+    const totalBonusEarnings = rawBonus * skinValue * (players.length - 1);
+    const totalPenaltyLoss = rawPenalty * skinValue * (players.length - 1);
+
+    holeData.bonusEarnings[i] += totalBonusEarnings;
+    holeData.penaltyDeductions[i] -= totalPenaltyLoss;
+
+    players.forEach((_, j) => {
+      if (i !== j) {
+        holeData.bonusEarnings[j] -= rawBonus * skinValue;
+        holeData.penaltyDeductions[j] += rawPenalty * skinValue;
+      }
+    });
+  });
+}
+
+// Step 6: Calculate star earnings (e.g., Birdie, Eagle, Albatross)
+function calculateStarEarnings(holeData) {
+  // Reset star earnings for all players
+  holeData.starEarnings = new Array(players.length).fill(0);
+
+  // Retrieve the Hole-in-One rate (default to 25 if not set)
+  const holeInOneRate = parseInt(document.getElementById('holeInOneRate')?.value) || 25;
+
+  players.forEach((player, i) => {
+    const par = player.gender === "Male"
+      ? selectedCourse.holes[currentHole - 1]?.mPar
+      : selectedCourse.holes[currentHole - 1]?.fPar;
+    const playerStrokes = holeData.strokes[i];
+
+    // Recognize and handle Hole-in-One
+    if (playerStrokes === 1) {
+      const earnings = holeInOneRate * skinValue * (players.length - 1); // Earn from all other players
+      holeData.starEarnings[i] += earnings;
+
+      // Deduct from all other players
+      players.forEach((_, j) => {
+        if (j !== i) {
+          holeData.starEarnings[j] -= holeInOneRate * skinValue;
+        }
+      });
+
+      console.log(`Player ${i + 1} scored a Hole-in-One! Earned ${earnings} stars.`);
+      return; // No further star calculations for this player
+    }
+
+    // Handle Birdie (Par - 1)
+    if (playerStrokes === par - 1) {
+      const earnings = skinValue * (players.length - 1); // Earn for Birdie
+      holeData.starEarnings[i] += earnings;
+
+      players.forEach((_, j) => {
+        if (j !== i) {
+          holeData.starEarnings[j] -= skinValue; // Deduct from all other players
+        }
+      });
+
+      console.log(`Player ${i + 1} scored a Birdie! Earned ${earnings} stars.`);
+    }
+
+    // Handle Eagle (Par - 2)
+    if (playerStrokes === par - 2) {
+      const earnings = eagleWinningRate * skinValue * (players.length - 1); // Earn for Eagle
+      holeData.starEarnings[i] += earnings;
+
+      players.forEach((_, j) => {
+        if (j !== i) {
+          holeData.starEarnings[j] -= eagleWinningRate * skinValue; // Deduct from all other players
+        }
+      });
+
+      console.log(`Player ${i + 1} scored an Eagle! Earned ${earnings} stars.`);
+    }
+
+    // Handle Albatross (Par - 3)
+    if (playerStrokes === par - 3) {
+      const earnings = albatrossWinningRate * skinValue * (players.length - 1); // Earn for Albatross
+      holeData.starEarnings[i] += earnings;
+
+      players.forEach((_, j) => {
+        if (j !== i) {
+          holeData.starEarnings[j] -= albatrossWinningRate * skinValue; // Deduct from all other players
+        }
+      });
+
+      console.log(`Player ${i + 1} scored an Albatross! Earned ${earnings} stars.`);
+    }
+  });
+}
+
+function adjustStarEarnings(holeData, playerIndex, multiplier) {
+  const earnings = multiplier * skinValue * (players.length - 1);
+  holeData.starEarnings[playerIndex] += earnings;
+  players.forEach((_, j) => {
+    if (j !== playerIndex) {
+      holeData.starEarnings[j] -= multiplier * skinValue;
+    }
+  });
+}
+
+/**
+ * Calculates Long Drive earnings based on the closest distance to the flag.
+ * - Players must be on the fairway and have a valid distance > 0 to be eligible for long drive.
+ * - If a player achieves a hole-in-one (strokes = 1, distance = 0, on fairway), they automatically win.
+ * - Players on fairway with `strokes > 1` are eligible to earn penalties if the long drive winner fails to make par.
+ * - Carryover logic applies if no eligible players exist.
+ */
+function calculateLongDriveEarnings(holeData) {
+  const longDriveDistances = holeData.longDrive || new Array(players.length).fill(0);
+  const fairwayStatuses = holeData.fairway || new Array(players.length).fill(false);
+  const strokes = holeData.strokes || new Array(players.length).fill(0);
+
+  console.log("Calculating Long Drive Earnings...");
+
+  // Filter players who are on the fairway
+  const fairwayPlayers = players
+    .map((player, i) => ({
+      index: i,
+      name: player.name,
+      distance: longDriveDistances[i],
+      onFairway: fairwayStatuses[i],
+      strokes: strokes[i],
+    }))
+    .filter(player => player.onFairway && player.distance > 0);
+
+  // If no players are on the fairway, carry over the star
+  if (fairwayPlayers.length === 0) {
+    console.log("No players on the fairway. Carrying over the star.");
+    holeData.longDriveCarryoverStars = (holeData.longDriveCarryoverStars || 0) + 1;
+    return;
+  }
+
+  // Find the player closest to the flag
+  const closestDistance = Math.min(...fairwayPlayers.map(player => player.distance));
+  const closestPlayer = fairwayPlayers.find(player => player.distance === closestDistance);
+
+  // Get the par for the current hole
+  const par = selectedCourse.holes[currentHole - 1]?.mPar || 5;
+
+  // Check if the closest player made par or better
+  if (closestPlayer.strokes > par) {
+    console.log(`${closestPlayer.name} is closest to the flag but failed to make par.`);
+
+    // The closest player must pay all other players on the fairway
+    const level = holeData.longDriveCarryoverStars || 1; // Default level is 1 if no carryover
+    fairwayPlayers.forEach(player => {
+      if (player.index !== closestPlayer.index) {
+        const payment = level * skinValue;
+
+        // Closest player pays this player
+        holeData.starEarnings[closestPlayer.index] = (holeData.starEarnings[closestPlayer.index] || 0) - payment;
+        holeData.starEarnings[player.index] = (holeData.starEarnings[player.index] || 0) + payment;
+
+        console.log(`${closestPlayer.name} pays ${payment} skins to ${player.name}.`);
+      }
+    });
+
+    // Carry over the Long Drive Star
+    holeData.longDriveCarryoverStars = (holeData.longDriveCarryoverStars || 0) + 1;
+    return;
+  }
+
+  // If the closest player makes par or better, they win
+  console.log(`${closestPlayer.name} is closest to the flag and made par or better.`);
+
+  const level = holeData.longDriveCarryoverStars || 1; // Default level is 1 if no carryover
+  players.forEach((player, index) => {
+    if (index !== closestPlayer.index) {
+      const payment = level * skinValue;
+
+      // Other players (fairway or not) pay the winner
+      holeData.starEarnings[index] = (holeData.starEarnings[index] || 0) - payment;
+      holeData.starEarnings[closestPlayer.index] = (holeData.starEarnings[closestPlayer.index] || 0) + payment;
+
+      console.log(`${player.name} pays ${payment} skins to ${closestPlayer.name}.`);
+    }
+  });
+
+  // Reset the carryover level since we have a winner
+  holeData.longDriveCarryoverStars = 0;
+}
+
+function calculateLongDriveForWomen(holeData, longDriveDistances, fairwayStatuses, strokes, womenPar) {
+  console.log("Calculating Long Drive for Women-only competition...");
+
+  // Filter eligible women players who are on the fairway with valid distances
+  const eligiblePlayers = players
+    .map((player, i) => ({
+      index: i,
+      name: player.name,
+      distance: longDriveDistances[i],
+      onFairway: fairwayStatuses[i],
+      strokes: strokes[i],
+      gender: player.gender,
+    }))
+    .filter(player => player.gender === "Female" && player.onFairway && player.distance > 0);
+
+  if (eligiblePlayers.length === 0) {
+    console.log("No eligible women for Long Drive. No carryover (always reset to level 1).");
+    return; // No carryover is needed—logic ends here
+  }
+
+  // Filter players who made par or better
+  const qualifyingPlayers = eligiblePlayers.filter(player => player.strokes <= womenPar);
+
+  if (qualifyingPlayers.length === 0) {
+    console.log("No women qualified by making par or better. No earnings distributed.");
+    return; // No earnings distributed since no one qualifies
+  }
+
+  // Find the shortest distance (winner among qualifiers)
+  const shortestDistance = Math.min(...qualifyingPlayers.map(player => player.distance));
+  const winners = qualifyingPlayers.filter(player => player.distance === shortestDistance);
+
+  if (winners.length > 1) {
+    console.log("Tie detected for Long Drive. All tied players are winners.");
+    const earningsPerWinner = skinValue * (qualifyingPlayers.length - winners.length);
+
+    winners.forEach(winner => {
+      holeData.starEarnings[winner.index] += earningsPerWinner;
+    });
+
+    qualifyingPlayers.forEach(player => {
+      if (!winners.some(winner => winner.index === player.index)) {
+        holeData.starEarnings[player.index] -= skinValue;
+      }
+    });
+
+    return;
+  }
+
+  // Determine the winner and losers
+  const winner = winners[0];
+  const losingPlayers = qualifyingPlayers.filter(player => player.index !== winner.index);
+
+  console.log(`Long Drive Winner: ${winner.name}`);
+  holeData.starEarnings[winner.index] += skinValue * (qualifyingPlayers.length - 1);
+
+  // Deduct earnings from losing players
+  losingPlayers.forEach(player => {
+    holeData.starEarnings[player.index] -= skinValue;
+  });
+
+  // Handle non-qualifying players who lose to other women
+  eligiblePlayers.forEach(player => {
+    if (!qualifyingPlayers.some(q => q.index === player.index) && player.strokes > womenPar) {
+      console.log(
+        `${player.name} did not make par and loses to qualifying players on the fairway.`
+      );
+      holeData.starEarnings[player.index] -= skinValue;
+    }
+  });
+}
+
+function calculateLongDriveForWomen(holeData, longDriveDistances, fairwayStatuses, strokes, womenPar) {
+  console.log("Calculating Long Drive for Women-only competition...");
+
+  // Filter eligible women players who are on the fairway with valid distances
+  const eligiblePlayers = players
+    .map((player, i) => ({
+      index: i,
+      name: player.name,
+      distance: longDriveDistances[i],
+      onFairway: fairwayStatuses[i],
+      strokes: strokes[i],
+      gender: player.gender,
+    }))
+    .filter(player => player.gender === "Female" && player.onFairway && player.distance > 0);
+
+  if (eligiblePlayers.length === 0) {
+    console.log("No eligible women for Long Drive. No carryover (always reset to level 1).");
+    return; // No carryover is needed—logic ends here
+  }
+
+  // Filter players who made par or better
+  const qualifyingPlayers = eligiblePlayers.filter(player => player.strokes <= womenPar);
+
+  if (qualifyingPlayers.length === 0) {
+    console.log("No women qualified by making par or better. No earnings distributed.");
+    return; // No earnings distributed since no one qualifies
+  }
+
+  // Find the shortest distance (winner among qualifiers)
+  const shortestDistance = Math.min(...qualifyingPlayers.map(player => player.distance));
+  const winners = qualifyingPlayers.filter(player => player.distance === shortestDistance);
+
+  if (winners.length > 1) {
+    console.log("Tie detected for Long Drive. All tied players are winners.");
+    const earningsPerWinner = skinValue * (qualifyingPlayers.length - winners.length);
+
+    winners.forEach(winner => {
+      holeData.starEarnings[winner.index] += earningsPerWinner;
+    });
+
+    qualifyingPlayers.forEach(player => {
+      if (!winners.some(winner => winner.index === player.index)) {
+        holeData.starEarnings[player.index] -= skinValue;
+      }
+    });
+
+    return;
+  }
+
+  // Determine the winner and losers
+  const winner = winners[0];
+  const losingPlayers = qualifyingPlayers.filter(player => player.index !== winner.index);
+
+  console.log(`Long Drive Winner: ${winner.name}`);
+  holeData.starEarnings[winner.index] += skinValue * (qualifyingPlayers.length - 1);
+
+  // Deduct earnings from losing players
+  losingPlayers.forEach(player => {
+    holeData.starEarnings[player.index] -= skinValue;
+  });
+
+  // Handle non-qualifying players who lose to other women
+  eligiblePlayers.forEach(player => {
+    if (!qualifyingPlayers.some(q => q.index === player.index) && player.strokes > womenPar) {
+      console.log(
+        `${player.name} did not make par and loses to qualifying players on the fairway.`
+      );
+      holeData.starEarnings[player.index] -= skinValue;
+    }
+  });
+}
+
+function calculateLongDriveForGeneralGroup(holeData, longDriveDistances, fairwayStatuses, strokes) {
+  console.log("Calculating Long Drive for general competition...");
+
+  // Filter eligible players (on fairway with valid distances)
+  const eligiblePlayers = players
+    .map((player, i) => ({
+      index: i,
+      name: player.name,
+      distance: longDriveDistances[i],
+      onFairway: fairwayStatuses[i],
+      strokes: strokes[i],
+      gender: player.gender,
+    }))
+    .filter(player => player.onFairway && player.distance > 0);
+
+  // If no eligible players, carry over the star
+  if (eligiblePlayers.length === 0) {
+    console.log("No eligible players for Long Drive. Carrying over the star.");
+    holeData.longDriveCarryoverStars = holeData.longDriveCarryoverStars + 1 || 1;
+    return;
+  }
+
+  // Find the longest valid drive (shortest distance to the flag)
+  const longestDistance = Math.max(...eligiblePlayers.map(player => player.distance));
+  const winners = eligiblePlayers.filter(player => player.distance === longestDistance);
+
+  // Handle ties
+  if (winners.length > 1) {
+    console.log("Tie detected for Long Drive. All tied players are winners.");
+    const earningsPerWinner = skinValue * (players.length - winners.length); // Include all players in the group
+
+    winners.forEach(winner => {
+      holeData.starEarnings[winner.index] += earningsPerWinner;
+    });
+
+    players.forEach((_, i) => {
+      if (!winners.some(winner => winner.index === i)) {
+        holeData.starEarnings[i] -= skinValue;
+      }
+    });
+
+    return;
+  }
+
+  // Determine the winner
+  const winner = winners[0];
+  console.log(`Long Drive Winner: ${winner.name}`);
+
+  // Winner earns from all other players (on or off fairway)
+  const totalPlayers = players.length;
+  holeData.starEarnings[winner.index] += skinValue * (totalPlayers - 1);
+
+  // All other players lose 1 skin value
+  players.forEach((_, i) => {
+    if (i !== winner.index) {
+      holeData.starEarnings[i] -= skinValue;
+    }
+  });
+}
+
+function handleNonQualifyingWinner(holeData, winnerIndex, carryoverLevel) {
+  const payees = players.filter((_, i) => history[currentHole]?.fairway[i] && i !== winnerIndex);
+  const totalPayees = payees.length;
+
+  if (totalPayees > 0) {
+    // Winner pays level × 1 skin value to each payee
+    const totalPayments = skinValue * carryoverLevel * totalPayees;
+    holeData.starEarnings[winnerIndex] -= totalPayments;
+
+    payees.forEach((_, i) => {
+      const payeeIndex = players.indexOf(payees[i]);
+      holeData.starEarnings[payeeIndex] += skinValue * carryoverLevel;
+    });
+
+    console.log(
+      `Non-Qualifying Winner: Player ${winnerIndex + 1} paid ${
+        totalPayments
+      } skins to ${totalPayees} players on the fairway.`
+    );
+
+    // Increment carryover level
+    holeData.longDriveCarryoverStars = carryoverLevel + 1;
+  } else {
+    // No payees on the fairway, increment carryover level
+    console.log("No payees on the fairway. Carrying over the star.");
+    holeData.longDriveCarryoverStars = carryoverLevel + 1;
+  }
+}
+
+function findLongDriveWinner(eligiblePlayers, longDrive) {
+  const longestDistance = Math.max(...eligiblePlayers.map((_, i) => longDrive[i]));
+  return players.findIndex((_, i) => longDrive[i] === longestDistance);
+}
+
+function awardLongDriveEarnings(holeData, winnerIndex, eligiblePlayers) {
+  const earnings = skinValue * (eligiblePlayers.length - 1);
+  holeData.starEarnings[winnerIndex] += earnings;
+  eligiblePlayers.forEach((_, i) => {
+    if (i !== winnerIndex) {
+      holeData.starEarnings[i] -= skinValue;
+    }
+  });
+}
+
+/**
+ * Calculates NTP (Nearest to the Pin) earnings based on the shortest distance to the hole.
+ * - NTP applies only if Men Par = Women Par = 3.
+ * - Players must input a valid distance > 0 to qualify.
+ * - Hole-in-One (distance = 0, stroke = 1) automatically wins NTP.
+ * - If the winner fails to make par, they pay all other players in the group.
+ * - If the winner makes par, they earn from all other players in the group.
+ * - Carryover logic for NTP is separate from Long Drive carryover.
+ */
+function calculateNtpEarnings(holeData) {
+  const ntpDistances = holeData.ntp || new Array(players.length).fill(0);
+  const strokes = holeData.strokes || new Array(players.length).fill(0);
+  const ntpCheckbox = holeData.ntpCheckbox || new Array(players.length).fill(false);
+  holeData.ntpEarnings = holeData.ntpEarnings || new Array(players.length).fill(0);
+  const carryoverLevel = holeData.ntpCarryoverStars || 1;
+  const { menPar, womenPar } = loadHoleDetails();
+
+  // Check if NTP applies (Men Par = Women Par = 3)
+  if (menPar !== 3 || womenPar !== 3) {
+    console.log("NTP does not apply for this hole. Skipping NTP calculation.");
+    return;
+  }
+
+  // Determine eligible players for NTP
+  const eligiblePlayers = players
+    .map((player, i) => ({
+      index: i,
+      strokes: strokes[i],
+      distance: ntpDistances[i],
+      onGreen: ntpCheckbox[i],
+    }))
+    .filter(player => player.onGreen && player.distance > 0);
+
+  if (eligiblePlayers.length === 0) {
+    console.log("No eligible players for NTP. Carrying over the star.");
+    holeData.ntpCarryoverStars = carryoverLevel + 1;
+    return;
+  }
+
+  // Check for hole-in-one winners
+  const holeInOneWinners = eligiblePlayers.filter(player => player.strokes === 1 && player.distance === 0);
+  if (holeInOneWinners.length > 0) {
+    console.log("Hole-in-One Detected! Automatically awarding NTP to:", holeInOneWinners);
+
+    holeInOneWinners.forEach(winner => {
+      const earnings = carryoverLevel * skinValue * (players.length - 1);
+      holeData.ntpEarnings[winner.index] += earnings;
+      holeData.starEarnings[winner.index] += earnings; // Reflect in Star Earnings
+    });
+
+    // Deduct from all other players
+    players.forEach((_, i) => {
+      if (!holeInOneWinners.some(winner => winner.index === i)) {
+        holeData.ntpEarnings[i] -= carryoverLevel * skinValue;
+        holeData.starEarnings[i] -= carryoverLevel * skinValue; // Reflect in Star Earnings
+      }
+    });
+
+    holeData.ntpCarryoverStars = 1; // Reset carryover level
+    return;
+  }
+
+  // Handle normal NTP calculations for players without hole-in-one
+  const shortestDistance = Math.min(...eligiblePlayers.map(player => player.distance));
+  const potentialWinners = eligiblePlayers.filter(player => player.distance === shortestDistance);
+
+  if (potentialWinners.length > 1) {
+    console.log("Tie detected for NTP. All tied players are winners.");
+    const earningsPerWinner = carryoverLevel * skinValue * (players.length - potentialWinners.length);
+    potentialWinners.forEach(winner => {
+      holeData.ntpEarnings[winner.index] += earningsPerWinner;
+      holeData.starEarnings[winner.index] += earningsPerWinner; // Reflect in Star Earnings
+    });
+
+    // Deduct from all other players
+    players.forEach((_, i) => {
+      if (!potentialWinners.some(winner => winner.index === i)) {
+        holeData.ntpEarnings[i] -= carryoverLevel * skinValue;
+        holeData.starEarnings[i] -= carryoverLevel * skinValue; // Reflect in Star Earnings
+      }
+    });
+
+    holeData.ntpCarryoverStars = 1; // Reset carryover level
+    return;
+  }
+
+  // Single winner case
+  const winner = potentialWinners[0];
+  const winnerIndex = winner.index;
+
+  const par = winner.gender === "Male" ? menPar : womenPar;
+  const winnerMadeParOrBetter = winner.strokes <= par;
+
+  if (winnerMadeParOrBetter) {
+    // Winner made par or better
+    const earnings = carryoverLevel * skinValue * (players.length - 1);
+    holeData.ntpEarnings[winnerIndex] += earnings;
+    holeData.starEarnings[winnerIndex] += earnings;
+
+    players.forEach((_, i) => {
+      if (i !== winnerIndex) {
+        holeData.ntpEarnings[i] -= carryoverLevel * skinValue;
+        holeData.starEarnings[i] -= carryoverLevel * skinValue;
+      }
+    });
+  } else {
+    // Winner failed to make par
+    const totalPayment = carryoverLevel * skinValue * eligiblePlayers.length;
+
+    holeData.ntpEarnings[winnerIndex] -= totalPayment;
+    holeData.starEarnings[winnerIndex] -= totalPayment;
+
+    eligiblePlayers.forEach(player => {
+      holeData.ntpEarnings[player.index] += carryoverLevel * skinValue;
+      holeData.starEarnings[player.index] += carryoverLevel * skinValue;
+    });
+  }
+
+  holeData.ntpCarryoverStars = 1; // Reset carryover level
+}
+
+function updateNtpDistance(playerIndex, value) {
+  const holeData = initializeHoleData(); // Ensure holeData is initialized.
+
+  const newValue = parseFloat(value) || 0;
+  if (newValue < 0) {
+    alert("Please enter a valid positive distance.");
+    return;
+  }
+
+  // Update the NTP distance in the history for the current hole
+  holeData.ntp = holeData.ntp || new Array(players.length).fill(0);
+  holeData.ntp[playerIndex] = newValue;
+
+  console.log(`Updated NTP Distance for Player ${playerIndex + 1}: ${newValue}`);
+  console.log(`Updated NTP Distance Array for Hole ${currentHole}:`, holeData.ntp);
+
+  // Trigger recalculation and UI update
+  updateHole(); // No need to call renderHoleUpdates() explicitly
+}
+// Step 8: Save hole data to history
+
+function saveHoleData(holeData) {
+  const totalHoleEarnings = players.map((_, i) => (
+    holeData.holeWinEarnings[i] +
+    holeData.strokeDiffEarnings[i] +
+    holeData.bonusEarnings[i] +
+    holeData.penaltyDeductions[i] +
+    holeData.starEarnings[i]
+  ));
+
+  history[currentHole] = {
+    ...holeData,
+    totalHoleEarnings,
+    ntpCarryoverStars: holeData.ntpCarryoverStars || 1, // Save NTP carryover level
+  };
+}
+
+// Step 9: Render updates to the UI
+function renderHoleUpdates() {
+  renderEarnings(); // Update the Earnings Breakdown
+  const summaryDiv = document.getElementById('holeSummary');
+  if (summaryDiv) {
+    summaryDiv.innerHTML = ''; // Clear previous content
+    renderHoleByHoleSummary(summaryDiv); // Update the Hole-by-Hole Summary
+  }
+  autoSaveGame(); // Automatically save the game state
+}
+
+// Render the earnings breakdown table and hole-by-hole summary
+function renderEarnings() {
+  console.log("Rendering Earnings Breakdown...");
+  const earningsDiv = document.getElementById('earnings');
+  earningsDiv.innerHTML = ''; // Clear previous content
+
+  // Add condition text for special cases
+  let conditionText = '';
+  if (currentHole === 0) {
+    conditionText = `<p><strong>Condition:</strong> Handicap Compensation is calculated and shown here. No strokes, bonuses, or penalties are applied for this hole.</p>`;
+  } else {
+    conditionText = `<p><strong>Condition:</strong> This hole includes earnings based on strokes, bonuses, penalties, and special achievements.</p>`;
+  }
+
+  // Create the earnings breakdown table
+  let html = `<h3>Earnings Breakdown</h3>
+              ${conditionText} <!-- Include the condition text dynamically -->
+              <table>
+                <thead>
+                  <tr>
+                    <th>Player</th>
+                    <th>Hole Win</th>
+                    <th>Stroke Diff</th>
+                    <th>Bonus</th>
+                    <th>Penalty</th>
+                    <th>Star</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody>`;
+
+  players.forEach((player, i) => {
+    const holeData = history[currentHole];
+    if (!holeData) {
+      console.warn(`No data for Hole ${currentHole}`); // Debug log for missing data
+      return;
+    }
+
+    const holeWinEarnings = holeData.holeWinEarnings?.[i] || 0;
+    const strokeDiffEarnings = holeData.strokeDiffEarnings?.[i] || 0;
+    const bonusEarnings = holeData.bonusEarnings?.[i] || 0;
+    const penaltyDeductions = holeData.penaltyDeductions?.[i] || 0;
+    const starEarnings = holeData.starEarnings?.[i] || 0;
+
+    // Include Handicap Compensation for Hole 0
+    const totalEarnings = currentHole === 0
+      ? player.handicapComp || 0
+      : holeWinEarnings + strokeDiffEarnings + bonusEarnings + penaltyDeductions + starEarnings;
+
+    // Add a row for the player's earnings with proper formatting
+    html += `<tr>
+               <td>${player.name}</td>
+               <td class="${getEarningsClass(holeWinEarnings)}">${formatEarnings(holeWinEarnings)}</td>
+               <td class="${getEarningsClass(strokeDiffEarnings)}">${formatEarnings(strokeDiffEarnings)}</td>
+               <td class="${getEarningsClass(bonusEarnings)}">${formatEarnings(bonusEarnings)}</td>
+               <td class="${getEarningsClass(penaltyDeductions)}">${formatEarnings(penaltyDeductions)}</td>
+               <td class="${getEarningsClass(starEarnings)}">${formatEarnings(starEarnings)}</td>
+               <td class="${getEarningsClass(totalEarnings)}">${formatEarnings(totalEarnings)}</td>
+             </tr>`;
+  });
+
+  html += `</tbody></table>`;
+  earningsDiv.innerHTML = html;
+
+  console.log("Earnings Breakdown Updated."); // Debug log
+}
+
+// Render the Hole-by-Hole Summary table
+function renderHoleByHoleSummary(container) {
+  if (!history || history.length === 0) {
+    container.innerHTML += '<p>No data available. Please play some holes first.</p>';
+    return;
+  }
+
+  if (!players || players.length === 0) {
+    console.error("No players data available."); // Debug log for missing players
+    container.innerHTML = "<p>No players found. Please set up players first.</p>";
+    return;
+  }
+
+  let html = `<h3>Hole-by-Hole Summary</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Hole</th>`;
+  players.forEach(player => {
+    html += `<th>${player.name}</th>`;
+  });
+  html += `</tr></thead><tbody>`;
+
+  const cumulativeEarnings = new Array(players.length).fill(0);
+
+  // Add the Total Earnings row at the top
+  html += `<tr><td><strong>Total Earnings</strong></td>`;
+  players.forEach((_, i) => {
+    const totalEarnings = history
+      .slice(0, currentHole + 1) // Loop through all played holes (including Hole 0)
+      .reduce((sum, hole, index) => {
+        const earnings = index === 0
+          ? players[i]?.handicapComp || 0 // Use `handicapComp` for Hole 0
+          : hole?.totalHoleEarnings?.[i] || 0; // Use `totalHoleEarnings` for other holes
+        return sum + earnings;
+      }, 0);
+
+    // Apply the earnings color based on the value
+    const earningsClass = totalEarnings > 0
+      ? 'earning-positive'
+      : totalEarnings < 0
+      ? 'earning-negative'
+      : 'earning-neutral'; // Zero value
+
+    html += `<td class="${earningsClass}">${formatEarnings(totalEarnings)}</td>`;
+  });
+  html += `</tr>`;
+
+  // Loop through all holes (including Hole 0)
+  for (let hole = 0; hole <= currentHole; hole++) {
+    html += `<tr><td>${hole === 0 ? "HDC COMP (Hole 0)" : `Hole ${hole}`}</td>`;
+    players.forEach((_, i) => {
+      const earnings =
+        hole === 0
+          ? players[i]?.handicapComp || 0 // Use `handicapComp` for Hole 0
+          : history[hole]?.totalHoleEarnings?.[i] || 0; // Use `totalHoleEarnings` for other holes
+
+      cumulativeEarnings[i] += earnings; // Accumulate earnings for each player
+
+      // Apply the earnings color based on the value
+      const earningsClass = earnings > 0
+        ? 'earning-positive'
+        : earnings < 0
+        ? 'earning-negative'
+        : 'earning-neutral'; // Zero value
+
+      html += `<td class="${earningsClass}">${formatEarnings(earnings)}</td>`;
+    });
+    html += `</tr>`;
+  }
+
+  html += `</tbody></table>`;
+  container.innerHTML = html;
+
+  console.log(`Rendered Hole-by-Hole Summary:`, { cumulativeEarnings }); // Debug log
+}
+
+function getEarningsClass(value) {
+  if (value > 0) return 'earning-positive'; // Green for positive values
+  if (value < 0) return 'earning-negative'; // Red for negative values
+  return 'earning-neutral'; // Black for zero values
+}
+
+// Navigate to the next hole
+function nextHole() {
+  saveCurrentHoleData(); // Save data for the current hole
+  if (currentHole < totalHoles) {
+    currentHole++; // Move to the next hole
+    renderHoleInputs(); // Render the inputs for the next hole
+    renderEarnings(); // Render the earnings summary
+	renderHoleByHoleSummary(document.getElementById('holeSummary')); // Ensure summary is updated
+
+    // Calculate and display earnings for the new hole
+    calculateEarningsForCurrentHole();
+
+    autoSaveGame(); // Auto-save the game
+  } else {
+    alert("This is the last hole!"); // If you're already at the last hole
+  }
+}
+
+function prevHole() {
+  saveCurrentHoleData(); // Save data for the current hole
+  if (currentHole > 0) {
+    currentHole--; // Move to the previous hole
+    renderHoleInputs(); // Render the inputs for the previous hole
+    renderEarnings(); // Render the earnings summary
+	renderHoleByHoleSummary(document.getElementById('holeSummary')); // Ensure summary is updated
+
+    // Calculate and display earnings for the new hole
+    calculateEarningsForCurrentHole();
+
+    autoSaveGame(); // Auto-save the game
+  } else {
+    alert("This is the first hole!"); // If you're already at the first hole
+  }
+}
+
+function toggleFairway(playerIndex, isChecked) {
+  if (currentHole === 0) {
+    console.log("Fairway toggle skipped for Hole 0."); // Prevent toggling on Hole 0
+    return;
+  }
+
+  const holeData = initializeHoleData(); // Ensure holeData is initialized.
+
+  // Update the Fairway status in the history array.
+  holeData.fairway[playerIndex] = isChecked;
+
+  const longDriveInput = document.getElementById(`longDrive${playerIndex}`);
+  if (isChecked) {
+    longDriveInput.disabled = false; // Enable the Long Drive input.
+  } else {
+    longDriveInput.disabled = true; // Disable the Long Drive input.
+    longDriveInput.value = ""; // Reset the Long Drive value.
+    holeData.longDrive[playerIndex] = 0; // Reset the Long Drive value in history.
+  }
+
+  console.log(`Fairway status for Player ${playerIndex}:`, isChecked);
+  console.log(`Updated Fairway Array for Hole ${currentHole}:`, holeData.fairway);
+
+  // Save the updated state to `history`.
+  saveCurrentHoleData();
+
+  // Recalculate and update the UI.
+  updateHole();
+}
+
+function toggleNtp(playerIndex, isChecked) {
+  const holeData = initializeHoleData(); // Ensure holeData is initialized.
+
+  // Update the NTP checkbox status in the history for the current hole
+  holeData.ntpCheckbox = holeData.ntpCheckbox || new Array(players.length).fill(false);
+  holeData.ntpCheckbox[playerIndex] = isChecked;
+
+  const ntpDistanceInput = document.getElementById(`ntpDistance${playerIndex}`);
+
+  if (isChecked) {
+    ntpDistanceInput.disabled = false; // Enable the distance input
+  } else {
+    ntpDistanceInput.disabled = true; // Disable the distance input
+    ntpDistanceInput.value = ""; // Reset the distance input value
+    holeData.ntp = holeData.ntp || new Array(players.length).fill(0);
+    holeData.ntp[playerIndex] = 0; // Reset the NTP distance in history
+  }
+
+  console.log(`Player ${playerIndex + 1} NTP checkbox status: ${isChecked}`);
+  console.log(`Updated NTP Checkbox Array for Hole ${currentHole}:`, holeData.ntpCheckbox);
+
+  // Trigger recalculation and UI update
+  updateHole(); // No need to call renderHoleUpdates() explicitly
+}
+
+function saveCurrentHoleData() {
+  if (!history[currentHole]) {
+    history[currentHole] = {};
+  }
+
+  // Initialize arrays for storing data
+  const strokes = [];
+  const bonus = [];
+  const penalty = [];
+  const longDrive = [];
+  const fairway = [];
+  const ntp = []; // Save NTP distances
+  const ntpCheckbox = []; // Save NTP checkbox statuses
+
+  // Loop through each player and save their data
+  players.forEach((_, i) => {
+    const strokeInput = document.getElementById(`stroke${i}`);
+    const bonusInput = document.getElementById(`bonus${i}`);
+    const penaltyInput = document.getElementById(`penalty${i}`);
+    const longDriveInput = document.getElementById(`longDrive${i}`);
+    const fairwayCheckbox = document.getElementById(`fairwayCheckbox${i}`);
+    const ntpInput = document.getElementById(`ntpDistance${i}`);
+    const ntpCheckboxInput = document.getElementById(`ntpCheckbox${i}`);
+
+    // Save data for each player
+    strokes[i] = strokeInput ? parseInt(strokeInput.value) || 0 : 0;
+    bonus[i] = bonusInput ? parseInt(bonusInput.value) || 0 : 0;
+    penalty[i] = penaltyInput ? parseInt(penaltyInput.value) || 0 : 0;
+    longDrive[i] = longDriveInput ? parseFloat(longDriveInput.value) || 0 : 0;
+    fairway[i] = fairwayCheckbox ? fairwayCheckbox.checked : false;
+    ntp[i] = ntpInput ? parseFloat(ntpInput.value) || 0 : 0;
+    ntpCheckbox[i] = ntpCheckboxInput ? ntpCheckboxInput.checked : false;
+  });
+
+  // Save the collected data into the history object
+  history[currentHole] = {
+    strokes,
+    bonus,
+    penalty,
+    longDrive,
+    fairway,
+    ntp, // Save NTP distances
+    ntpCheckbox, // Save NTP checkbox statuses
+    holeWinEarnings: history[currentHole]?.holeWinEarnings || new Array(players.length).fill(0),
+    strokeDiffEarnings: history[currentHole]?.strokeDiffEarnings || new Array(players.length).fill(0),
+    bonusEarnings: history[currentHole]?.bonusEarnings || new Array(players.length).fill(0),
+    penaltyDeductions: history[currentHole]?.penaltyDeductions || new Array(players.length).fill(0),
+    starEarnings: history[currentHole]?.starEarnings || new Array(players.length).fill(0),
+    ntpEarnings: history[currentHole]?.ntpEarnings || new Array(players.length).fill(0), // Initialize NTP earnings
+    totalHoleEarnings: history[currentHole]?.totalHoleEarnings || new Array(players.length).fill(0), // Initialize total earnings
+    holeEarnings: history[currentHole]?.holeEarnings || new Array(players.length).fill(0), // Add this
+  };
+
+  console.log(`Saved data for Hole ${currentHole}:`, history[currentHole]); // Debug log
+}
+
+function calculateEarningsForCurrentHole() {
+  const holeData = history[currentHole];
+  if (!holeData) return;
+
+  // Ensure existing earnings data is retained
+  holeData.holeWinEarnings = holeData.holeWinEarnings || new Array(players.length).fill(0);
+  holeData.strokeDiffEarnings = holeData.strokeDiffEarnings || new Array(players.length).fill(0);
+  holeData.bonusEarnings = holeData.bonusEarnings || new Array(players.length).fill(0);
+  holeData.penaltyDeductions = holeData.penaltyDeductions || new Array(players.length).fill(0);
+  holeData.starEarnings = holeData.starEarnings || new Array(players.length).fill(0);
+
+  const totalHoleEarnings = players.map((_, i) => (
+    holeData.holeWinEarnings[i] +
+    holeData.strokeDiffEarnings[i] +
+    holeData.bonusEarnings[i] +
+    holeData.penaltyDeductions[i] +
+    holeData.starEarnings[i]
+  ));
+
+  holeData.totalHoleEarnings = totalHoleEarnings;
+
+  console.log(`Calculated earnings for Hole ${currentHole}:`, totalHoleEarnings);
+}
+
+// Displays the form for adding a new course
+function showNewCoursfeForm() {
+  document.getElementById('newCourseModal').style.display = 'block';
+
+  const numHoles = parseInt(document.getElementById('newCourseHoles').value) || 18;
+  let holesHtml = '<h3>Hole Details</h3><table><thead><tr><th>Hole</th><th>Men Par</th><th>Men Index</th><th>Women Par</th><th>Women Index</th></tr></thead><tbody>';
+
+  for (let i = 1; i <= numHoles; i++) {	
+    holesHtml += `<tr>
+      <td>${i}</td>
+      <td>
+        <div class="number-input">
+          <button onclick="decrementPar('mPar${i}', 3)">−</button>
+          <input type="number" id="mPar${i}" min="3" max="5" value="4" readonly />
+          <button onclick="incrementPar('mPar${i}', 5)">+</button>
+        </div>
+      </td>
+      <td>
+        <div class="number-input">
+          <button onclick="decrementIndex('mIndex${i}', 1)">−</button>
+          <input type="number" id="mIndex${i}" min="1" max="18" value="${i}" readonly />
+          <button onclick="incrementIndex('mIndex${i}', 18)">+</button>
+        </div>
+      </td>
+      <td>
+        <div class="number-input">
+          <button onclick="decrementPar('fPar${i}', 3)">−</button>
+          <input type="number" id="fPar${i}" min="3" max="5" value="4" readonly />
+          <button onclick="incrementPar('fPar${i}', 5)">+</button>
+        </div>
+      </td>
+      <td>
+        <div class="number-input">
+          <button onclick="decrementIndex('fIndex${i}', 1)">−</button>
+          <input type="number" id="fIndex${i}" min="1" max="18" value="${i}" readonly />
+          <button onclick="incrementIndex('fIndex${i}', 18)">+</button>
+        </div>
+      </td>
+    </tr>`;
+  }
+  holesHtml += '</tbody></table>';
+  document.getElementById('newCourseHolesDetails').innerHTML = holesHtml;
+}
+
+// Closes the course creation form
+function closeNewCourseForm() {
+  document.getElementById('newCourseModal').style.display = 'none';
+  document.getElementById('newCourseName').value = '';
+  document.getElementById('newCourseHoles').value = 18; // Reset to default
+  document.getElementById('newCourseHolesDetails').innerHTML = ''; // Clear hole details
+}
+
+// Creates and validates a new golf course
+function createNewCourse() {
+  const courseName = document.getElementById('newCourseName').value.trim();
+  const numHoles = parseInt(document.getElementById('newCourseHoles').value);
+
+  if (!courseName) {
+    alert("Please enter a course name.");
+    return;
+  }
+
+  if (isNaN(numHoles) || numHoles < 1 || numHoles > 18) {
+    alert("Please enter a valid number of holes (1-18).");
+    return;
+  }
+
+  const holes = [];
+  const menIndexes = new Set();
+  const womenIndexes = new Set();
+
+  for (let i = 1; i <= numHoles; i++) {
+    const mPar = parseInt(document.getElementById(`mPar${i}`).value) || 4;
+    const mIndex = parseInt(document.getElementById(`mIndex${i}`).value);
+    const fPar = parseInt(document.getElementById(`fPar${i}`).value) || 4;
+    const fIndex = parseInt(document.getElementById(`fIndex${i}`).value);
+
+    if (menIndexes.has(mIndex)) {
+      alert(`Duplicate Men Index (${mIndex}) found at Hole ${i}.`);
+      return;
+    }
+    if (womenIndexes.has(fIndex)) {
+      alert(`Duplicate Women Index (${fIndex}) found at Hole ${i}.`);
+      return;
+    }
+
+    if (mPar < 3 || mPar > 5 || fPar < 3 || fPar > 5) {
+      alert(`Par values for Hole ${i} must be between 3 and 5.`);
+      return;
+    }
+
+    if (mIndex < 1 || mIndex > 18 || fIndex < 1 || fIndex > 18) {
+      alert(`Index values for Hole ${i} must be between 1 and 18.`);
+      return;
+    }
+
+    menIndexes.add(mIndex);
+    womenIndexes.add(fIndex);
+    holes.push({ hole: i, mPar, mIndex, fPar, fIndex });
+  }
+
+  const newCourse = { name: courseName, holes };
+  courses.push(newCourse);
+
+  const courseSelect = document.getElementById('golfCourseSelect');
+  const option = document.createElement('option');
+  option.value = courseName;
+  option.textContent = courseName;
+  courseSelect.appendChild(option);
+
+  closeNewCourseForm();
+  
+    // Auto-save the game after creating a new course
+  autoSaveGame();
+}
+
+// Increments a par value
+function incrementPar(id, max) {
+  const input = document.getElementById(id);
+  let value = parseInt(input.value) || 3;
+  if (value < max) {
+    input.value = value + 1;
+  }
+}
+
+// Decrements a par value
+function decrementPar(id, min) {
+  const input = document.getElementById(id);
+  let value = parseInt(input.value) || 3;
+  if (value > min) {
+    input.value = value - 1;
+  }
+}
+
+// Increments an index value
+function incrementIndex(id, max) {
+  const input = document.getElementById(id);
+  let value = parseInt(input.value) || 1;
+  if (value < max) {
+    input.value = value + 1;
+  }
+}
+
+// Decrements an index value
+function decrementIndex(id, min) {
+  const input = document.getElementById(id);
+  let value = parseInt(input.value) || 1;
+  if (value > min) {
+    input.value = value - 1;
+  }
+}
+
+// Increases the number of players
+function incrementPlayers() {
+  const input = document.getElementById('numPlayers');
+  let value = parseInt(input.value) || 2; // Default to 2 if no value
+  if (value < 6) { // Max 6 players
+    input.value = value + 1;
+  }
+}
+
+// Decreases the number of players
+function decrementPlayers() {
+  const input = document.getElementById('numPlayers');
+  let value = parseInt(input.value) || 2; // Default to 2 if no value
+  if (value > 2) { // Min 2 players
+    input.value = value - 1;
+  }
+}
+
+function incrementSkinValue() {
+  const input = document.getElementById('skinValue');
+  let value = parseFloat(input.value) || 0;
+
+  if (value === 0) {
+    value = 0.5; // Increment to 0.5 if current value is 0
+  } else if (value < 1) {
+    value += 0.5; // Increment by 0.5 if less than 1
+  } else {
+    value += 1; // Increment by 1 if greater than or equal to 1
+  }
+
+  input.value = value.toFixed(1); // Format the value to one decimal place
+}
+
+function decrementSkinValue() {
+  const input = document.getElementById('skinValue');
+  let value = parseFloat(input.value) || 0;
+
+  if (value === 0.5) {
+    value = 0; // Decrement to 0 if current value is 0.5
+  } else if (value <= 1 && value > 0) {
+    value -= 0.5; // Decrement by 0.5 if less than or equal to 1
+  } else if (value > 1) {
+    value -= 1; // Decrement by 1 if greater than 1
+  }
+
+  value = Math.max(0, value); // Ensure the value is not less than 0
+  input.value = value.toFixed(1); // Format the value to one decimal place
+}
+
+// Toggles the player gender between Male and Female
+function toggleGender(playerIndex) {
+  const genderButton = document.getElementById(`gender${playerIndex}`);
+  if (genderButton.classList.contains('male')) {
+    genderButton.classList.remove('male');
+    genderButton.classList.add('female');
+    genderButton.textContent = 'Female';
+  } else {
+    genderButton.classList.remove('female');
+    genderButton.classList.add('male');
+    genderButton.textContent = 'Male';
+  }
+}
+
+// Fetches golf course data from golf_courses.json
+// Example: Fetching golf course data
+function fetchCourseData() {
+  fetch("data/golf_courses.json")
+    .then(response => {
+      if (!response.ok) {
+        throw new Error("Failed to load golf course data.");
+      }
+      return response.json();
+    })
+    .then(data => {
+      if (!Array.isArray(data)) {
+        throw new Error("Invalid golf course data format.");
+      }
+      courses = data;
+      loadCourses();
+    })
+    .catch(error => {
+      console.error("Error loading course data:", error);
+      alert("Failed to load golf course data. Please try again later.");
+    });
+}
+
+// Other functions like loadCourses(), startGame(), renderHoleInputs(), etc.
+// Include all JavaScript logic from your HTML file here.
+function loadCourses() {
+  const courseSelect = document.getElementById("golfCourseSelect");
+
+  // Sort to ensure "Brighton Lakes Golf Club" is the first choice
+  const defaultCourseName = "Brighton Lakes Golf Club";
+  courses.sort((a, b) => (a.name === defaultCourseName ? -1 : b.name === defaultCourseName ? 1 : 0));
+
+  // Populate the dropdown menu
+  courseSelect.innerHTML = `<option value="" disabled>Select a Golf Course</option>`;
+  courses.forEach(course => {
+    const option = document.createElement("option");
+    option.value = course.name;
+    option.textContent = course.name;
+
+    // Auto-select the default course
+    if (course.name === defaultCourseName) {
+      option.selected = true;
+      selectedCourse = course; // Set the default course
+    }
+
+    courseSelect.appendChild(option);
+  });
+
+  // Render the default course on the first page
+if (selectedCourse && lastRenderedHole !== currentHole) {
+  currentHole = 0; // Start at Hole 0
+  renderHoleInputs(); // Render the inputs for Hole 0
+  renderEarnings(); // Render the earnings summary
+}
+}
+
+// Handle course selection from the dropdown
+function loadGolfCourse() {
+  const courseName = document.getElementById("golfCourseSelect").value;
+  const selectedCourseTemp = courses.find(course => course.name === courseName);
+
+  if (!selectedCourseTemp) {
+    alert("Please select a valid golf course.");
+    return;
+  }
+
+  // Only update if the selected course has changed
+  if (selectedCourse !== selectedCourseTemp || lastRenderedHole !== 0) {
+    selectedCourse = selectedCourseTemp;
+    currentHole = 0; // Start at Hole 0
+    renderHoleInputs();
+    renderEarnings();
+  }
+}
+
+// Starts the game after course and player setup
+function startGame() {
+  if (!selectedCourse) {
+    alert("Please select a golf course before starting the game.");
+    return;
+  }
+  showPlayerSetup(); // Move to the player setup
+}
+
+function saveGame() {
+  const gameState = {
+    players,
+    history,
+    currentHole,
+    selectedCourse,
+    skinValue,
+    eagleWinningRate,
+    albatrossWinningRate,
+  };
+
+  // Save the game state as a JSON string in localStorage
+  localStorage.setItem("golfGameState", JSON.stringify(gameState));
+}
+
+function loadGame() {
+  const savedGame = localStorage.getItem("golfGameState");
+  if (!savedGame) {
+    alert("No saved game found!");
+    return;
+  }
+
+  if (!savedGame) {
+    alert("No saved game found.");
+    return;
+  }
+
+  // Parse the saved game state
+  const gameState = JSON.parse(savedGame);
+
+  // Restore the game state
+  players = gameState.players || [];
+  history = gameState.history || [];
+  currentHole = gameState.currentHole || 0;
+  selectedCourse = gameState.selectedCourse || null;
+  skinValue = gameState.skinValue || 1;
+  eagleWinningRate = gameState.eagleWinningRate || 16;
+  albatrossWinningRate = gameState.albatrossWinningRate || 25;
+
+  alert("Game progress loaded!");
+
+  // Update the UI
+  document.getElementById("setup").classList.add("hidden");
+  document.getElementById("playerSetup").classList.add("hidden");
+  document.getElementById("holeTracker").classList.remove("hidden");
+  document.getElementById("earningsSummary").classList.remove("hidden");
+
+  // Render the restored game state
+renderHoleInputs();
+renderEarnings(); // Display earnings breakdown
+renderHoleByHoleSummary(document.getElementById('holeSummary')); // Display hole-by-hole summary
+
+}
+
+function clearSavedGame() {
+  localStorage.removeItem("golfGameState");
+  alert("Saved game cleared!");
+}
+
+function autoSaveGame() {
+  saveGame(); // Call saveGame after every hole or action
+}
+
+function validatePlayerName(name) {
+  if (!name || name.trim() === "") {
+    alert("Player name cannot be empty!");
+    return false;
+  }
+  return true;
+}
+
+function formatEarnings(value) {
+  if (value === 0) {
+    return "0"; // Display zero as "0"
+  }
+
+  // Add "+" for positive values and leave "-" for negative values
+  return value > 0
+    ? `+${parseFloat(value.toFixed(2))}` // Format with two decimal places
+    : `${parseFloat(value.toFixed(2))}`;
+}
+
+function toggleDarkMode() {
+  document.body.classList.toggle("dark-mode");
+}
+
+function updateLongDrive(playerIndex, value) {
+  if (!history[currentHole]) {
+    history[currentHole] = { longDrive: new Array(players.length).fill(0), fairway: new Array(players.length).fill(false) };
+  }
+
+  const newValue = parseFloat(value) || 0;
+  if (newValue < 0) {
+    alert("Please enter a valid positive distance.");
+    return;
+  }
+
+  // Update the Long Drive value in the history array.
+  history[currentHole].longDrive[playerIndex] = newValue;
+
+  console.log(`Updated Long Drive for Player ${playerIndex + 1}:`, newValue);
+  console.log(`Long Drive Array for Hole ${currentHole}:`, history[currentHole].longDrive);
+
+  // Recalculate and update the UI.
+  updateHole();
+}
+
+function attachInputListeners() {
+  players.forEach((_, i) => {
+    const strokeInput = document.getElementById(`stroke${i}`);
+    if (strokeInput) {
+      strokeInput.addEventListener("change", () => updateHole());
+    }
+
+    const bonusInput = document.getElementById(`bonus${i}`);
+    if (bonusInput) {
+      bonusInput.addEventListener("change", () => updateHole());
+    }
+
+    const penaltyInput = document.getElementById(`penalty${i}`);
+    if (penaltyInput) {
+      penaltyInput.addEventListener("change", () => updateHole());
+    }
+
+    const longDriveInput = document.getElementById(`longDrive${i}`);
+    if (longDriveInput) {
+      longDriveInput.addEventListener("input", () => updateHole());
+    }
+
+    const fairwayBtn = document.getElementById(`fairwayBtn${i}`);
+    if (fairwayBtn) {
+      fairwayBtn.addEventListener("click", () => {
+        toggleFairway(i);
+        updateHole();
+      });
+    }
+  });
+}
+
+function calculateHandicapCompensation() {
+  const comp = [];
+  for (let i = 0; i < players.length; i++) {
+    let sum = 0;
+    for (let j = 0; j < players.length; j++) {
+      if (i !== j) {
+        const diff = (players[i].hcp - players[j].hcp) * skinValue;
+        sum += Math.floor(diff);
+      }
+    }
+    comp[i] = sum;
+  }
+
+  // Save Handicap Compensation to each player and Hole 0
+  players.forEach((player, i) => {
+    player.handicapComp = comp[i];
+    player.earnings = comp[i];
+  });
+
+  if (!history[0]) {
+    history[0] = {};
+  }
+
+  history[0].totalHoleEarnings = [...comp];
+  console.log(`Handicap Compensation calculated for Hole 0:`, comp);
+}
+
+// Default state on page load
+window.onload = function () {
+  fetchCourseData(); // Fetch courses
+  applyTranslations(); // Apply the default language
+
+  // Set the default active button
+  document.getElementById("btnEN").classList.add("btn-green");
+  document.getElementById("btnVN").classList.add("btn-gray");
+
+  // Check for a saved game
+  const savedGame = localStorage.getItem("golfGameState");
+  if (savedGame) {
+    const resumeButton = document.createElement("button");
+    resumeButton.textContent = "Resume Saved Game";
+    resumeButton.classList.add("btn", "btn-green");
+    resumeButton.onclick = loadGame;
+
+    const setupDiv = document.getElementById("setup");
+    setupDiv.appendChild(resumeButton); // Add the button to the setup section
+  }
+};
+

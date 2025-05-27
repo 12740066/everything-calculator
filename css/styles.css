@@ -1,14 +1,14 @@
-/* General Styles */
+/* General Background Adjustment */
 body {
   font-family: Arial, sans-serif;
   margin: 0;
   padding: 0;
-  background-color: #f4f4f4;
+  background-color: #e8f5e9; /* Light green background */
 }
 
 h2 {
   margin: 10px 0;
-  color: #333;
+  color: #2e7d32; /* Dark green color for headings */
 }
 
 label {
@@ -16,54 +16,81 @@ label {
   font-weight: bold;
 }
 
+/* Number Input Styling */
 .number-input {
   display: inline-flex;
   align-items: center;
-  margin-left: 10px;
+  margin-left: 5px;
 }
 
 .number-input input {
-  width: 50px;
   text-align: center;
   border: 1px solid #ccc;
   border-radius: 4px;
   margin: 0 5px;
+  padding: 5px;
+  width: auto; /* Ensure inputs adjust based on content */
+  min-width: 30px; /* Minimum width for consistent sizing */
+  max-width: 80px; /* Prevent overly large inputs */
+}
+
+.number-input input[type="number"] {
+  padding: 5px;
+}
+
+input[type="text"],
+input[type="number"] {
+  width: 100%; /* Ensure the input stretches to fit its container */
+  box-sizing: border-box; /* Prevent overflow */
+  overflow: hidden; /* Prevent text from spilling out */
+}
+
+textarea {
+  resize: none; /* Disable resizing unless needed */
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Table Checkbox Styling */
+td input[type="checkbox"] {
+  margin-left: 4px;
+  transform: scale(1.2); /* Slightly enlarge checkboxes for better visibility */
 }
 
 .number-input button {
-  background-color: #e0e0e0;
-  border: 1px solid #ccc;
+  background-color: #a5d6a7; /* Light green for number input buttons */
+  border: 1px solid #81c784; /* Darker green border */
   padding: 5px 10px;
   cursor: pointer;
 }
 
 .number-input button:hover {
-  background-color: #dcdcdc;
+  background-color: #81c784; /* Dark green on hover */
 }
 
+/* Button Styling */
 .btn {
   padding: 10px 15px;
   margin: 5px;
   cursor: pointer;
   border-radius: 4px;
   border: none;
-  background-color: #4caf50;
+  background-color: #66bb6a; /* Vibrant green for general buttons */
   color: white;
   font-size: 14px;
 }
 
 .btn:hover {
-  background-color: #45a049;
+  background-color: #4caf50; /* Slightly darker green on hover */
 }
 
 .btn-gray {
-  background-color: #ccc;
-  color: black;
-  margin: 5px;
+  background-color: #a5d6a7; /* Light green for gray buttons */
+  color: #2e7d32; /* Dark green text */
 }
 
 .btn-gray:hover {
-  background-color: #bbb;
+  background-color: #81c784; /* Darker green on hover */
 }
 
 /* Disabled Button Style */
@@ -78,64 +105,60 @@ label {
 }
 
 .btn-red {
-  background-color: #f44336;
+  background-color: #ef5350; /* Red for reset buttons */
   color: white;
   border: none;
-  padding: 10px 15px;
-  border-radius: 4px;
-  cursor: pointer;
 }
 
 .btn-red:hover {
-  background-color: #e53935;
+  background-color: #e53935; /* Slightly darker red */
 }
 
 .btn-green {
-  background-color: #4caf50; /* Green background */
+  background-color: #388e3c; /* Strong green for active buttons */
   color: white; /* White text */
 }
 
-.btn-gray {
-  background-color: #ccc; /* Gray background */
-  color: black; /* Black text */
-}
-
+/* Earnings Colors */
 .earning-positive {
-  color: green; /* Positive values will be green */
+  color: #2e7d32; /* Dark green for positive values */
   font-weight: bold;
 }
 
 .earning-negative {
-  color: red; /* Negative values will be red */
+  color: #d32f2f; /* Red for negative values */
   font-weight: bold;
 }
 
 .earning-neutral {
-  color: black; /* Zero values will remain black */
+  color: black; /* Neutral values remain black */
   font-weight: normal;
 }
 
+/* Table Styling */
 table {
   border-collapse: collapse;
-  width: 100%;
+  width: 100%; /* Ensure the table takes up the full width */
   margin-top: 20px;
-  background-color: white;
+  background-color: #f9fbe7; /* Subtle green background for tables */
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  table-layout: auto; /* Allow table columns to adjust based on content */
 }
 
 th, td {
   border: 1px solid #ccc;
   padding: 8px;
   text-align: center;
+  word-wrap: break-word; /* Ensures long text breaks into multiple lines */
 }
 
 th {
-  background-color: #f2f2f2;
+  background-color: #c5e1a5; /* Light green background for table headers */
   font-weight: bold;
 }
 
 tr:nth-child(even) {
-  background-color: #f9f9f9;
+  background-color: #e8f5e9; /* Alternate row background in light green */
 }
 
 /* Modal Styles */
@@ -152,17 +175,14 @@ tr:nth-child(even) {
 }
 
 .modal-content {
-  background-color: white;
+  background-color: #f1f8e9; /* Light green tone for modal content */
   margin: 10% auto;
   padding: 20px;
   border: 1px solid #888;
-  width: 80%;
-  max-width: 600px;
+  width: 90%; /* Adjust width for smaller devices */
+  max-width: 600px; /* Maximum width for larger screens */
   border-radius: 8px;
   text-align: left;
-}
-
-.modal-content {
   animation: fadeIn 0.3s ease-in-out;
 }
 
@@ -179,7 +199,7 @@ tr:nth-child(even) {
 
 @media (max-width: 600px) {
   .modal-content {
-    width: 90%;
+    width: 95%; /* More compact for very small devices */
     padding: 15px;
   }
   h2 {
@@ -193,19 +213,100 @@ input:focus {
   outline-offset: 2px;
 }
 
+/* Dark Mode Adjustments */
 body.dark-mode {
-  background-color: #333;
-  color: #f4f4f4;
-}
-.btn {
-  background-color: #555;
-  color: #fff;
+  background-color: #121212; /* Neutral dark background */
+  color: #f4f4f4; /* Light text for contrast */
 }
 
-.btn:hover {
-  background-color: #444;
+body.dark-mode h2 {
+  color: #ffffff; /* White text for headings in dark mode */
+}
+
+body.dark-mode .btn {
+  background-color: #333333; /* Neutral dark buttons */
+  color: #f4f4f4; /* Light text */
+}
+
+body.dark-mode .btn:hover {
+  background-color: #444444; /* Slightly lighter dark buttons on hover */
+}
+
+body.dark-mode .btn-gray {
+  background-color: #555555; /* Neutral gray buttons for dark mode */
+  color: #f4f4f4; /* Light text */
+}
+
+body.dark-mode .earning-positive {
+  color: #81c784; /* Light green for positive values */
+}
+
+body.dark-mode .earning-negative {
+  color: #e57373; /* Light red for negative values */
+}
+
+body.dark-mode table {
+  background-color: #1e1e1e; /* Dark table background */
+}
+
+body.dark-mode th {
+  background-color: #333333; /* Dark table header */
+  color: #f4f4f4; /* Light text for headers */
+}
+
+body.dark-mode tr:nth-child(even) {
+  background-color: #2a2a2a; /* Darker alternate rows */
+}
+
+body.dark-mode .modal-content {
+  background-color: #1e1e1e; /* Dark modal content */
+  color: #f4f4f4; /* Light text */
+}
+
+/* Responsive Table Wrapping */
+.table-wrapper {
+  overflow-x: auto; /* Enable horizontal scrolling for smaller devices */
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling for mobile devices */
 }
 
 .hidden {
   display: none;
+}
+
+/* Media Queries for Smaller Screens */
+@media only screen and (max-width: 768px) {
+  table {
+    font-size: 12px; /* Smaller font size for better fit */
+  }
+
+  th, td {
+    padding: 4px; /* Reduce padding to save space */
+  }
+
+  .btn {
+    font-size: 12px; /* Adjust button font size for smaller devices */
+    padding: 8px 10px; /* Reduce padding for buttons */
+  }
+
+  h2 {
+    font-size: 20px; /* Adjust heading size for tablets */
+  }
+}
+
+@media only screen and (max-width: 480px) {
+  table {
+    font-size: 10px; /* Further reduce font size for very small devices */
+  }
+
+  th, td {
+    padding: 2px; /* Minimal padding for small screens */
+  }
+
+  .modal-content {
+    padding: 10px; /* Compact padding for modals */
+  }
+
+  h2 {
+    font-size: 18px; /* Smaller heading size for phones */
+  }
 }
