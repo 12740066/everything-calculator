@@ -22,4 +22,27 @@
       { "hole": 18, "mPar": 3, "mIndex": 13, "fPar": 3, "fIndex": 18 }
     ]
   }
+{
+  "name": "Calderwood Vally Golf Course",
+  "holes": [
+    { "hole": 1, "mPar": 5, "mIndex": 11, "fPar": 5, "fIndex": 11 },
+    { "hole": 2, "mPar": 4, "mIndex": 15, "fPar": 4, "fIndex": 15 },
+    { "hole": 3, "mPar": 4, "mIndex": 12, "fPar": 4, "fIndex": 12 },
+    { "hole": 4, "mPar": 3, "mIndex": 16, "fPar": 3, "fIndex": 16 },
+    { "hole": 5, "mPar": 5, "mIndex": 3, "fPar": 5, "fIndex": 3 },
+    { "hole": 6, "mPar": 3, "mIndex": 8, "fPar": 3, "fIndex": 8 },
+    { "hole": 7, "mPar": 5, "mIndex": 9, "fPar": 5, "fIndex": 9 },
+    { "hole": 8, "mPar": 3, "mIndex": 14, "fPar": 3, "fIndex": 14 },
+    { "hole": 9, "mPar": 4, "mIndex": 6, "fPar": 4, "fIndex": 6 },
+    { "hole": 10, "mPar": 4, "mIndex": 17, "fPar": 4, "fIndex": 17 },
+    { "hole": 11, "mPar": 3, "mIndex": 2, "fPar": 3, "fIndex": 2 },
+    { "hole": 12, "mPar": 5, "mIndex": 1, "fPar": 5, "fIndex": 1 },
+    { "hole": 13, "mPar": 3, "mIndex": 4, "fPar": 3, "fIndex": 4 },
+    { "hole": 14, "mPar": 4, "mIndex": 18, "fPar": 4, "fIndex": 18 },
+    { "hole": 15, "mPar": 4, "mIndex": 10, "fPar": 4, "fIndex": 10 },
+    { "hole": 16, "mPar": 4, "mIndex": 5, "fPar": 4, "fIndex": 5 },
+    { "hole": 17, "mPar": 3, "mIndex": 7, "fPar": 3, "fIndex": 7 },
+    { "hole": 18, "mPar": 4, "mIndex": 13, "fPar": 4, "fIndex": 13 }
+  ]
+}
 ]
